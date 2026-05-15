@@ -10,9 +10,18 @@ EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 def main():
+    global INPUT_DIR, OUTPUT_DIR, EXTENSIONS
+
     # ask user for custom parameters (added fallback)
+    INPUT_DIR = input(f"Enter input directory (Default: {INPUT_DIR}): ") or INPUT_DIR
+    OUTPUT_DIR = input(f"Enter output directory (Default: {OUTPUT_DIR}): ") or OUTPUT_DIR
+
+    extensions_input = input(f"Enter file extensions to process (comma-separated, Default: {(EXTENSIONS)}): ") or ", ".join(EXTENSIONS)
+    EXTENSIONS = {ext.strip().lower() for ext in extensions_input.split(",")}
+
     customwidth = int(input("Enter width (Default: 1920): ") or 1920)
     compression = int(input("Enter compression level (1-31 | Lower = better quality | Default: 4): ") or 4)
+    
     RUN(customwidth, compression)
 
 def setCommand(file: str, customwidth: int, compression: int, OutputFile: str) -> list[str]:
