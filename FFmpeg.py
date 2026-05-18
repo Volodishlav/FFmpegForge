@@ -2,6 +2,16 @@ import os
 import subprocess
 from pathlib import Path
 import argparse
+import arg_verification
+
+# SETTINGS
+INPUT_DIR = "./test"
+OUTPUT_DIR = "./output"
+EXTENSIONS = {}
+IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm"}
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # parse arguments
 parser = argparse.ArgumentParser()
@@ -14,27 +24,10 @@ parser.add_argument("-eI", "--image-extensions", action="store_true")
 
 args = parser.parse_args()
 
-if args.extensions is not None:
-
-    try:
-        EXTENSIONS = {ext.strip().lower() for ext in args.extensions.split(",")}
-
-        for ext in EXTENSIONS:
-            if not ext.startswith("."):
-                raise ValueError(f"Invalid extension: {ext}")
-        
-    except Exception as e:
-        print("Error:", e)
-
-
-# SETTINGS
-INPUT_DIR = "./test"
-OUTPUT_DIR = "./output"
-EXTENSIONS = {}
-IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
-VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm"}
-
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+# set global variables based on arguments
+INPUT_DIR = arg_verification.arg_input() or INPUT_DIR
+OUTPUT_DIR = arg_verification.arg_output() or OUTPUT_DIR
+EXTENSIONS = arg_verification.arg_extensions() or #########################
 
 
 def main():
@@ -49,11 +42,35 @@ def main():
 
     if imgORvid.lower() == "v":
         extensions_input = input(f"Enter file extensions to process or press Enter for defaults (comma-separated, Default: {(VIDEO_EXTENSIONS)}): ") or ", ".join(VIDEO_EXTENSIONS)
-        EXTENSIONS = {ext.strip().lower() for ext in extensions_input.split(",")}
+        try:
+            for ext in extensions_input.split(","):
+                if not ext.strip().startswith("."):
+                    print(f"Invalid extension: {ext}")
+                    EXTENSIONS = VIDEO_EXTENSIONS
+                    break
+
+            if EXTENSIONS != VIDEO_EXTENSIONS:
+                EXTENSIONS = {ext.strip().lower() for ext in extensions_input.split(",")}
+            
+        except ValueError as e:
+            print("Error:", e)
+            EXTENSIONS = VIDEO_EXTENSIONS
 
     elif imgORvid.lower() == "i":
         extensions_input = input(f"Enter file extensions to process or press Enter for defaults (comma-separated, Default: {(IMG_EXTENSIONS)}): ") or ", ".join(IMG_EXTENSIONS)
-        EXTENSIONS = {ext.strip().lower() for ext in extensions_input.split(",")}
+        try:
+            for ext in extensions_input.split(","):
+                if not ext.strip().startswith("."):
+                    print(f"Invalid extension: {ext}")
+                    EXTENSIONS = IMG_EXTENSIONS
+                    break
+
+            if EXTENSIONS != IMG_EXTENSIONS:
+                EXTENSIONS = {ext.strip().lower() for ext in extensions_input.split(",")}
+
+        except ValueError as e:
+            print("Error:", e)
+            EXTENSIONS = IMG_EXTENSIONS
 
     else:
         print("Invalid choice. Setting to default image extensions...")
