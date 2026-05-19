@@ -35,7 +35,6 @@ args = parser.parse_args()
 
 # COMPATIBILITY CHECKS
 if args.compress:
-
     if args.convert:
         parser.error("-cP/--compress cannot be used with -cV/--convert")
 
@@ -43,6 +42,8 @@ if args.compress:
         parser.error("-cP/--compress cannot be used with -tE/--target-extension")
 
 if args.convert:
+    if args.compress:
+        parser.error("-cV/--convert cannot be used with -cP/--compress")
 
     if args.max_width is not None:
         parser.error("-cV/--convert cannot be used with -w/--max-width")
@@ -75,7 +76,7 @@ def set_output_dir():
         OUTPUT_DIR = input(f"Enter output directory (Default: {OUTPUT_DIR}): ") or OUTPUT_DIR
         os.makedirs(OUTPUT_DIR, exist_ok=True)
     except Exception as e:
-        OUTPUT_DIR = "./"
+        OUTPUT_DIR = "./output"
         print(f"Error occurred while setting output directory: {e} | (new output directory set to {OUTPUT_DIR})")
     
 def arg_output():
@@ -142,11 +143,13 @@ def arg_extensions():
     else:
         if args.extensions is not None:
             try:
-                EXTENSIONS = {ext.strip().lower() for ext in args.extensions.split(",")}
+                for ext in args.extensions.split(","):
+                    ext = ext.strip().lower()
 
-                for ext in EXTENSIONS:
                     if not ext.startswith("."):
-                        raise ValueError(f"Invalid extension: {ext}")
+                        ext = "." + ext
+
+                    EXTENSIONS.add(ext)
 
             except Exception as e:
                 print("Error:", e)
@@ -154,37 +157,135 @@ def arg_extensions():
         else:
             set_extensions()
 
-
-def arg_compress_or_convert():
-    pass
-
+# COMPRESSION OR CONVERSION
 def set_compression_or_conversion():
 
     compressionORconversion = input("Compress/resize (c) or convert (v)? (Default: c): ") or "c"
 
     if compressionORconversion.lower() == "c":
-        customwidth = int(input("Enter maximum width (Default: 1920): ") or 1920)
-        compression = int(input("Enter compression level (1-31 | Lower = better quality | Default: 4): ") or 4)
+        while True:
+            tmp_customwidth = input("Enter maximum width (Default: 1920): ")
+
+            if tmp_customwidth == "":
+                customwidth = 1920
+                break
+
+            try:
+                customwidth = int(tmp_customwidth)
+                break
+
+            except ValueError:
+                print("Please enter a valid integer")
+
+        while True:
+            tmp_compression = input("Enter compression level (1-31 | Lower = better quality | Default: 4): ")
+
+            if tmp_compression == "":
+                compression = 4
+                break
+
+            try:
+                compression = int(tmp_compression)
+                break
+
+            except ValueError:
+                print("Please enter a valid integer")
+        
+        target_extension = None
 
     elif compressionORconversion.lower() == "v":
-        targetExtension = input("Enter target file extension for conversion (e.g., .jpg, .mp4): ").strip().lower()
-        if not targetExtension.startswith("."):
-            targetExtension = "." + targetExtension
-            customwidth = None
-            compression = None
+        while True:
+            target_extension = input("Enter target file extension for conversion (e.g., .jpg, .mp4): ").strip().lower()
+
+            if target_extension == "":
+                print("Error: extension cannot be empty")
+                continue
+
+            if not target_extension.startswith("."):
+                target_extension = "." + target_extension
+
+            break
+
+        customwidth = None
+        compression = None
+
     else:
         print("Invalid choice. Try again.")
         set_compression_or_conversion()
 
+    RUN(customwidth, compression, target_extension if compressionORconversion.lower() == "v" else None)
 
-RUN(customwidth, compression, targetExtension if compressionORconversion.lower() == "v" else None)
+def arg_compress_or_convert():
+    if args.compress:
+        if args.max_width is not None and type(args.max_width) == int:
+            customwidth = int(args.max_width)
+
+        else:
+            while True:
+                tmp_customwidth = input("Enter maximum width (Default: 1920): ")
+
+                if tmp_customwidth == "":
+                    customwidth = 1920
+                    break
+
+                try:
+                    customwidth = int(tmp_customwidth)
+                    break
+
+                except ValueError:
+                    print("Please enter a valid integer")
+
+        if args.compression_level is not None and type(args.compression_level) == int:
+            compression = int(args.compression_level)
+        
+        else:
+            while True:
+                tmp_compression = input("Enter compression level (1-31 | Lower = better quality | Default: 4): ")
+
+                if tmp_compression == "":
+                    compression = 4
+                    break
+
+                try:
+                    compression = int(tmp_compression)
+                    break
+
+                except ValueError:
+                    print("Please enter a valid integer")
+
+        target_extension = None
+    
+    elif args.convert:
+        if args.target_extension is not None and type(args.target_extension) == str:
+            target_extension = args.target_extension.strip().lower()
+
+        else:
+            while True:
+                target_extension = input("Enter target file extension for conversion (e.g., .jpg, .mp4): ").strip().lower()
+
+                if target_extension == "":
+                    print("Error: extension cannot be empty")
+                    continue
+
+                if not target_extension.startswith("."):
+                    target_extension = "." + target_extension
+
+                break
+        
+        customwidth = None
+        compression = None
+
+    else:
+        set_compression_or_conversion()
+
+    RUN(customwidth, compression, target_extension)
 
 
-def set_command(file: str, customwidth: int, compression: int, OutputFile: str, targetExtension: str = None) -> list[str]:
+def set_command(file: str, customwidth: int, compression: int, OutputFile: str, target_extension: str = None) -> list[str]:
 
-    if targetExtension is not None:
-        if targetExtension.lower() not in EXTENSIONS:
-            raise ValueError(f"Unsupported target extension: {targetExtension}")
+    if target_extension is not None:
+        if target_extension.lower() not in EXTENSIONS:
+            raise ValueError(f"Unsupported target extension: {target_extension}")
         command = [
             "ffmpeg", "-i", str(file), str(OutputFile)
         ]
@@ -215,7 +316,7 @@ def set_command(file: str, customwidth: int, compression: int, OutputFile: str, 
     return command
 
 
-def RUN(customwidth, compression, targetExtension=None):
+def RUN(customwidth, compression, target_extension=None):
 
     for file in Path(INPUT_DIR).iterdir():
         if file.suffix.lower() not in EXTENSIONS:
@@ -223,12 +324,12 @@ def RUN(customwidth, compression, targetExtension=None):
 
         print(f"Processing: {file.name}")
 
-        if targetExtension is not None:
-            OutputFile = Path(OUTPUT_DIR) / f"{file.stem}{targetExtension}"
+        if target_extension is not None:
+            OutputFile = Path(OUTPUT_DIR) / f"{file.stem}{target_extension}"
         else:
             OutputFile = Path(OUTPUT_DIR) / f"{file.stem}{file.suffix.lower()}"
 
-            command = set_command(file, customwidth, compression, OutputFile, targetExtension)
+            command = set_command(file, customwidth, compression, OutputFile, target_extension)
 
             subprocess.run(
                 command,
@@ -242,7 +343,7 @@ def main():
     arg_input()
     arg_output()
     arg_extensions()
-    MODE = arg_compress_or_convert()
+    arg_compress_or_convert()
 
 print("Done.")
 
