@@ -33,6 +33,7 @@ parser.add_argument("-tE", "--target-extension", type=str)
 
 args = parser.parse_args()
 
+
 # COMPATIBILITY CHECKS
 if args.compress:
     if args.convert:
@@ -51,6 +52,7 @@ if args.convert:
     if args.compression_level is not None:
         parser.error("-cV/--convert cannot be used with -l/--compression-level")
 
+
 # INPUT
 def set_input_dir():
     global INPUT_DIR
@@ -68,6 +70,7 @@ def arg_input():
     else:
         set_input_dir()
 
+
 # OUTPUT
 def set_output_dir():
     global OUTPUT_DIR
@@ -84,6 +87,7 @@ def arg_output():
         return args.output
     else:
         set_output_dir()
+
 
 # EXTENSIONS
 def set_extensions():
@@ -156,6 +160,7 @@ def arg_extensions():
                 set_extensions()
         else:
             set_extensions()
+
 
 # COMPRESSION OR CONVERSION
 def set_compression_or_conversion():
