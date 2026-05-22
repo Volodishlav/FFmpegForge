@@ -12,6 +12,8 @@ EXTENSIONS = {}
 IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm"}
 
+count = 0
+
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
@@ -26,6 +28,8 @@ parser.add_argument("-cV", "--convert", type=str)                               
 parser.add_argument("-r", "--resize", type=str)                                   # Arguments: [width:height] "AUTO" can be used for automatic aspect ratio in either width or height
 parser.add_argument("-f", "--fps", type=int)                                      # Arguments: [fps]
 parser.add_argument("-eF", "--extract-frames", action="store_true")               # Arguments: (True/False)
+parser.add_argument("-c", "--cut", type=str)                                      # Arguments: [00:00:00-00:00:00]
+parser.add.argument("-cC", "--concat", action="store_true")                       # Arguments: [target_count] [OutputFile]
 
 parser.add_argument("-tE", "--target-extension", type=str)                        # Arguments: [target-extension]
 
@@ -33,6 +37,9 @@ args = parser.parse_args()                                                      
 
 
 def RUN():
+
+    global count
+    
     for file in Path(INPUT_DIR).iterdir():
 
         if args.target_extension is not None:
@@ -121,14 +128,55 @@ def RUN():
 
             elif args.fps is not None:
                 command = [
-                    "ffmpeg", "-i", str(file),
+                    "ffmpeg",
+                    "-i", str(file),
                     "-r", str(args.fps),
                     str(OutputFile)
                 ]
 
             elif args.extract_frames is not None:
                 OutputFile = Path(OUTPUT_DIR) / f"{file.stem}.%04d.png"
-                command = ["ffmpeg", "-i", str(file), str(OutputFile)]
+                command = [
+                    "ffmpeg",
+                    "-i", str(file),
+                    str(OutputFile)
+                ]
+
+            elif args.cut is not None:
+                start, end = args.cut.split("-")
+
+                if start == end:
+                    print("start == end | This could cause problems")
+
+                command = [
+                    "ffmpeg", "-ss",
+                    f"{start}", "-to", f"{end}",
+                    "-i", str(file), "-c", "copy",
+                    str(OutputFile)
+                ]
+
+            elif args.concat is not None:
+
+                target_count, OutputFile = args.concat
+
+                with open(ffmpegforge_tmp_list, "a", encoding="utf-8") as f:
+                    f.write(f"file '{Path(file).resolve()}'\n")
+
+                print(f"[{count}/{target_count}] added: {file}")
+                count += 1                
+
+                if count != target_count:
+                    continue
+
+                else:
+                    command = [
+                        "ffmpeg",
+                        "-f", "concat",
+                        "-safe", "0",
+                        "-i", str(tmp_list),
+                        "-c", "copy",
+                        str(OutputFile)
+                    ]
 
         except Exception as e:
             print(f"Error processing {file.name}: {e}")
@@ -143,6 +191,8 @@ def RUN():
             stderr=subprocess.DEVNULL
         )
 
+        ffmpegforge_tmp_list.unlink(missing_ok=True)
+        
 
 def main():
     global INPUT_DIR, OUTPUT_DIR
