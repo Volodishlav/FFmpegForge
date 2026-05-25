@@ -8,6 +8,10 @@ import argparse
 # SETTINGS
 INPUT_DIR = "./test"
 OUTPUT_DIR = "./output"
+
+INPUT_FILE = None
+OUTPUT_FILE = None
+
 EXTENSIONS = {}
 IMG_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 VIDEO_EXTENSIONS = {".mp4", ".mkv", ".avi", ".mov", ".webm"}
@@ -17,6 +21,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # PARSE ARGS
 parser = argparse.ArgumentParser()
+
+parser.add_argument("input_file")
+parser.add_argument("output_file")
 
 parser.add_argument("-i", "--input", type=str)                                    # Arguments: [input-dir]
 parser.add_argument("-o", "--output", type=str)                                   # Arguments: [output-dir]
@@ -42,6 +49,15 @@ def RUN():
         elif args.target_extension is None:
             OutputFile = Path(OUTPUT_DIR) / f"{file.stem}{file.suffix.lower()}"
 
+
+        if INPUT_FILE is not None and ((Path(INPUT_FILE)).is_file()) is True:
+            file = Path(INPUT_FILE)
+
+        if OUTPUT_FILE is not None and ((Path(OUTPUT_FILE)).is_file()) is True:
+            OutputFile = Path(OUTPUT_FILE)
+            custom_output_file = True
+
+
         try:
             if args.compress is not None:
                 max_width, compression_level = args.compress
@@ -54,7 +70,10 @@ def RUN():
                 ]
 
             elif args.convert is not None:
-                OutputFile = Path(OUTPUT_DIR) / f"{file.stem}{args.convert}"
+                if custom_output_file:
+                    OutputFile = Path(OUTPUT_FILE)
+                else:
+                    OutputFile = Path(OUTPUT_DIR) / f"{file.stem}{args.convert}"
 
                 if args.convert.lower() == ".jpg":
                     command = [
@@ -130,7 +149,10 @@ def RUN():
                 ]
 
             elif args.extract_frames is not None:
-                OutputFile = Path(OUTPUT_DIR) / f"{file.stem}.%04d.png"
+                if custom_output_file:
+                    OutputFile = Path(OUTPUT_FILE)
+                else:
+                    OutputFile = Path(OUTPUT_DIR) / f"{file.stem}.%04d.png"
 
                 command = [
                     "ffmpeg",
@@ -153,17 +175,45 @@ def RUN():
 
 
 def main():
-    global INPUT_DIR, OUTPUT_DIR
+    global INPUT_DIR, INPUT_FILE, OUTPUT_DIR, OUTPUT_FILE
+
+    if args.input is not None and parser.input_file is not None:
+        print("Error: Both input file and input directory cannot be specified at the same time.")
+        return
+
+    if args.output is not None and parser.output_file is not None:
+        print("Error: Both output file and output directory cannot be specified at the same time.")
+        return
+    
 
     if args.input is not None:
         INPUT_DIR = args.input
         print(f"Input path set to: {INPUT_DIR}")
+
+    elif parser.input_file is not None:
+        tmp_path = Path(parser.input_file)
+
+        INPUT_DIR = None
+        INPUT_FILE = tmp_path.resolve()
+
+        print(f"Input file set to: {INPUT_FILE}")
+
     else:
         print("Using default input path.")
+
 
     if args.output is not None:
         OUTPUT_DIR = args.output
         print(f"Output path set to: {OUTPUT_DIR}")
+
+    elif parser.output_file is not None:
+        tmp_path = Path(parser.output_file)
+
+        OUTPUT_DIR = None
+        OUTPUT_FILE = tmp_path.resolve()
+
+        print(f"Output file set to: {OUTPUT_FILE}")
+
     else:
         print("Using default output path.")
 
