@@ -21,11 +21,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str)                                    # Arguments: [input-dir]
 parser.add_argument("-o", "--output", type=str)                                   # Arguments: [output-dir]
 
-parser.add_argument("-cP", "--compress", nargs=2)                                 # Arguments: [max-width] [compression-level]
-parser.add_argument("-cV", "--convert", type=str)                                 # Arguments: [target-extension]
-parser.add_argument("-r", "--resize", type=str)                                   # Arguments: [width:height] "AUTO" can be used for automatic aspect ratio in either width or height
-parser.add_argument("-f", "--fps", type=int)                                      # Arguments: [fps]
-parser.add_argument("-eF", "--extract-frames", action="store_true")               # Arguments: (True/False)
+ex_args = parser.add_mutually_exclusive_group()
+
+ex_args.add_argument("-cP", "--compress", nargs=2)                                 # Arguments: [max-width] [compression-level]
+ex_args.add_argument("-cV", "--convert", type=str)                                 # Arguments: [target-extension]
+ex_args.add_argument("-r", "--resize", type=str)                                   # Arguments: [width:height] "AUTO" can be used for automatic aspect ratio in either width or height
+ex_args.add_argument("-f", "--fps", type=int)                                      # Arguments: [fps]
+ex_args.add_argument("-eF", "--extract-frames", action="store_true")               # Arguments: (True/False)
 
 parser.add_argument("-tE", "--target-extension", type=str)                        # Arguments: [target-extension]
 
@@ -121,14 +123,20 @@ def RUN():
 
             elif args.fps is not None:
                 command = [
-                    "ffmpeg", "-i", str(file),
+                    "ffmpeg",
+                    "-i", str(file),
                     "-r", str(args.fps),
                     str(OutputFile)
                 ]
 
             elif args.extract_frames is not None:
                 OutputFile = Path(OUTPUT_DIR) / f"{file.stem}.%04d.png"
-                command = ["ffmpeg", "-i", str(file), str(OutputFile)]
+
+                command = [
+                    "ffmpeg",
+                    "-i", str(file),
+                    str(OutputFile)
+                    ]
 
         except Exception as e:
             print(f"Error processing {file.name}: {e}")
